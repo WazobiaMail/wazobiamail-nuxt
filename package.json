@@ -1,0 +1,67 @@
+{
+  "name": "wazobiamail-nuxt",
+  "version": "0.1.0",
+  "description": "Official WazobiaMail Nuxt 3 & Nuxt 4 Module - Full-stack email sending, Nitro server utilities, and auto-imported Vue composables",
+  "author": "Bowofade Oyerinde <info@bonifadetechnologies.com> (https://github.com/WazobiaMail)",
+  "license": "MIT",
+  "homepage": "https://wazobiamail.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WazobiaMail/wazobiamail-nuxt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/WazobiaMail/wazobiamail-nuxt/issues"
+  },
+  "keywords": [
+    "nuxt",
+    "nuxt3",
+    "nuxt4",
+    "wazobiamail",
+    "email",
+    "inbox",
+    "nitro",
+    "composable"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "prepack": "bun run build"
+  },
+  "peerDependencies": {
+    "nuxt": "^3.0.0 || ^4.0.0"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^3.15.0",
+    "defu": "^6.1.4",
+    "wazobiamail": "file:../typescript",
+    "wazobiamail-vue": "file:../vue"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "nuxt": "^3.15.0",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vue": "^3.5.13"
+  }
+}
