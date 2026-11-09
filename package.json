@@ -16,6 +16,7 @@
     "nuxt",
     "nuxt3",
     "nuxt4",
+    "nuxt-module",
     "wazobiamail",
     "email",
     "inbox",
@@ -34,6 +35,14 @@
       },
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./server": {
+      "types": {
+        "import": "./dist/runtime/server/utils.d.ts",
+        "require": "./dist/runtime/server/utils.d.cts"
+      },
+      "import": "./dist/runtime/server/utils.js",
+      "require": "./dist/runtime/server/utils.cjs"
     },
     "./package.json": "./package.json"
   },

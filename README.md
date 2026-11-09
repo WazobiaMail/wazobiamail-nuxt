@@ -3,8 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/wazobiamail-nuxt.svg?style=flat-square)](https://www.npmjs.com/package/wazobiamail-nuxt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Nuxt](https://img.shields.io/badge/Nuxt-3.x%20%7C%204.x-00DC82.svg?style=flat-square)](https://nuxt.com/)
+[![Docs](https://img.shields.io/badge/Docs-docs.wazobiamail.com-blueviolet.svg?style=flat-square)](https://docs.wazobiamail.com)
 
 Official Nuxt 3 & Nuxt 4 module for [WazobiaMail](https://wazobiamail.com). Full-stack email sending, Nitro server utilities, automated secret isolation, and auto-imported Vue composables.
+
+> 📚 **Official Platform Documentation**: Visit [docs.wazobiamail.com](https://docs.wazobiamail.com) for exhaustive API references, architecture guides, DNS setup walkthroughs, and webhook configurations.
 
 ---
 
@@ -80,7 +83,37 @@ export default defineEventHandler(async (event) => {
 
 ---
 
-### 2. Auto-Imported Composables in Pages & Components
+### 2. Delivery Tracking, Stats, Read Receipts & Click Receipts
+
+Every message sent through Nitro server routes returns a `trackingId`. WazobiaMail automatically tracks:
+
+- **Read Receipts (Open Tracking)**: An invisible 1x1 tracking pixel records when recipients open your email, capturing timestamp, IP geolocation, user-agent, and open counts.
+- **Click Receipts (Link Tracking)**: Links in HTML content are automatically rewritten to your tracking domain, logging each click event, recipient, destination URL, and click counts.
+- **Delivery Lifecycle**: Real-time status progression from `queued` ➔ `sent` ➔ `delivered` ➔ `opened` ➔ `clicked` ➔ `bounced`.
+
+In Nitro server endpoints (e.g., `server/api/receipts/[id].get.ts`):
+
+```typescript
+// server/api/receipts/[id].get.ts
+export default defineEventHandler(async (event) => {
+  const client = serverWazobiaClient(event);
+  const trackingId = getRouterParam(event, 'id')!;
+
+  const receipt = await client.messages.getTracked(trackingId);
+
+  return {
+    status: receipt.data.status,
+    deliveredAt: receipt.data.deliveredAt,
+    openCount: receipt.data.openCount,     // Read Receipts count
+    clickCount: receipt.data.clickCount,   // Click Receipts count
+    events: receipt.data.events,           // Detailed timeline
+  };
+});
+```
+
+---
+
+### 3. Auto-Imported Composables in Pages & Components
 
 All composables from `wazobiamail-vue` are automatically imported in your Nuxt templates:
 
@@ -110,7 +143,7 @@ const sendNotification = async () => {
 
 ---
 
-### 3. Enterprise Mailbox Inbox
+### 4. Enterprise Mailbox Inbox
 
 ```vue
 <!-- pages/inbox.vue -->
@@ -134,6 +167,88 @@ const { messages, isLoading, refresh, deleteMessage } = useMailbox('mb_12345', {
   </div>
 </template>
 ```
+
+---
+
+## Subdomain vs. Apex / Root Domain Architecture & Edge Cases
+
+When configuring custom domains for transactional sending, choosing between a **subdomain** (e.g. `mail.yourdomain.com` or `send.yourdomain.com`) and an **apex/root domain** (`yourdomain.com`) is a critical architectural decision.
+
+### 1. Why Using a Subdomain is Recommended (Root Domain NOT Used)
+
+In production environments, **we strongly recommend using a dedicated sending subdomain** rather than your root/apex domain:
+
+- **Preserve Existing Business Email (Google Workspace / Microsoft 365):**
+  If your root domain (`yourdomain.com`) already receives corporate email via Google Workspace or Microsoft 365, adding MX records pointing to WazobiaMail at the root apex `@` will **break your existing company email inbox routing**. Using `mail.yourdomain.com` isolates transactional email routing completely.
+- **Isolate Sender Reputation:**
+  Transactional emails (password resets, invoices, OTP codes) have high engagement and deliverability requirements. Sending from a subdomain (`mail.yourdomain.com`) ensures that any accidental marketing spam complaints won't degrade your corporate employee email deliverability.
+- **Avoid SPF 10-Lookup Limit Exhaustion (RFC 7208):**
+  SPF records have a strict limit of 10 DNS lookups. Root domains often accumulate multiple SaaS providers (Google, Zendesk, Salesforce, HubSpot). A dedicated subdomain gives WazobiaMail its own clean, independent SPF record without lookup count contention.
+
+---
+
+### 2. DNS Hostnames When Root Domain is NOT Used
+
+When verifying a subdomain like `mail.yourdomain.com`, ensure you configure your DNS provider (Cloudflare, Route53, Namecheap, GoDaddy) with the correct hostnames:
+
+| Record Type | Host / Name (if domain is `mail.yourdomain.com`) | Target / Value | Notes |
+| :--- | :--- | :--- | :--- |
+| **TXT (SPF)** | `mail` (or `mail.yourdomain.com`) | `v=spf1 include:_spf.wazobiamail.com ~all` | **Do NOT** place on `@` root |
+| **TXT (DKIM)** | `wzbm._domainkey.mail` | `k=rsa; p=MIGfMA0GCSqGSIb3...` | Selector is scoped to the subdomain |
+| **MX (Hosted)**| `mail` (priority 10 / 20) | `mx1.wazobiamail.com` / `mx2.wazobiamail.com` | Only required if receiving mail or hosted inboxes |
+| **CNAME (Tracking)** | `email.mail` | `trk.wazobiamail.com` | Used for custom branded click/open tracking |
+| **TXT (DMARC)** | `_dmarc.mail` (or fallback to `_dmarc`) | `v=DMARC1; p=reject; rua=mailto:dmarc@...` | Resolvers fall back to apex `_dmarc` if omitted |
+
+---
+
+### 3. Critical Edge Cases & Troubleshooting
+
+#### ⚠️ Edge Case 1: `UnverifiedSenderDomain` (HTTP 422 / 403)
+- If you verified `mail.yourdomain.com` in WazobiaMail, your `from` address **must** match that subdomain:
+  - ✅ **Valid**: `from: 'Acme <billing@mail.yourdomain.com>'`
+  - ❌ **Invalid**: `from: 'Acme <billing@yourdomain.com>'` (Fails because apex `yourdomain.com` is unverified)
+- Attempting to send from an unverified parent domain will be rejected with an `UnverifiedSenderDomain` error.
+
+#### 💡 Edge Case 2: Reply-To Decoupling in Nitro Server Routes
+- You can send from the verified subdomain while routing customer replies to your corporate root domain mailbox:
+  ```typescript
+  // server/api/contact.post.ts
+  export default defineEventHandler(async (event) => {
+    const client = serverWazobiaClient(event);
+    const body = await readBody(event);
+
+    return await client.messages.send({
+      from: 'Acme Orders <orders@mail.yourdomain.com>', // Verified sending subdomain
+      replyTo: 'support@yourdomain.com',               // Your corporate inbox on Google Workspace/Outlook
+      to: body.email,
+      subject: 'Order Confirmation',
+      html: '<p>Thank you for your order!</p>',
+    });
+  });
+  ```
+- This gives you the deliverability benefits of a dedicated sending subdomain while preserving user-friendly reply handling.
+
+#### ☁️ Edge Case 3: Cloudflare Proxy Status (Grey Cloud vs. Orange Cloud)
+- **Problem**: In Cloudflare DNS, leaving the proxy enabled (**Orange Cloud**) for mail or tracking records breaks SMTP traffic, DNS verification, and SSL certificate issuance.
+- **Solution**: Always toggle Cloudflare records to **"DNS only" (Grey Cloud / Proxied: Off)** for all WazobiaMail SPF, DKIM, MX, and tracking records.
+
+#### ⏳ Edge Case 4: Negative DNS Caching (SOA Minimum TTL Delay)
+- If you trigger verification immediately after publishing DNS records before they propagate, recursive resolvers may cache the negative response (`NXDOMAIN` or empty record).
+- Subsequent verification checks will continue to fail until the DNS TTL expires (often 5 to 60 minutes).
+- **Tip**: Test propagation first with `dig TXT mail.yourdomain.com` or `dig TXT wzbm._domainkey.mail.yourdomain.com +trace` before triggering verification.
+
+#### 🛡️ Edge Case 5: DMARC Subdomain Policy (`sp=`) Inheritance
+- If your apex domain (`yourdomain.com`) has a DMARC record with `sp=reject` or `sp=quarantine`:
+  - Any subdomain (e.g. `mail.yourdomain.com`) automatically inherits that rejection policy unless it defines its own `_dmarc.mail.yourdomain.com` record.
+  - If SPF or DKIM alignment fails on the subdomain, recipient mail servers (Gmail, Yahoo, Outlook) will reject or spam-folder your emails immediately. Ensure both SPF and DKIM pass before sending production traffic.
+
+#### 📬 Edge Case 6: Headless Inboxes & Hosted Mailboxes on Subdomains
+- When provisioning hosted mailboxes (`useMailbox`), the mailbox address is generated under the specific verified domain (e.g. `support@mail.yourdomain.com`).
+- Inbound receiving requires the MX records for that exact subdomain to be pointing to WazobiaMail. Do not point the root domain MX to WazobiaMail if you have existing email services there.
+
+#### 🔁 Edge Case 7: Network Timeouts & Idempotency
+- If an HTTP request times out due to transient network issues, the email may already have been queued by the API Gateway.
+- Always provide an `idempotencyKey` when dispatching critical transactional messages. Retrying with the same key returns the existing tracking receipt without duplicate sending.
 
 ---
 
