@@ -102,11 +102,11 @@ export default defineEventHandler(async (event) => {
   const receipt = await client.messages.getTracked(trackingId);
 
   return {
-    status: receipt.data.status,
-    deliveredAt: receipt.data.deliveredAt,
-    openCount: receipt.data.openCount,     // Read Receipts count
-    clickCount: receipt.data.clickCount,   // Click Receipts count
-    events: receipt.data.events,           // Detailed timeline
+    status: receipt.data.message.status,
+    deliveredAt: receipt.data.message.lastDeliveryEventAt,
+    openCount: receipt.data.message.openCount,     // Read Receipts count
+    clickCount: receipt.data.message.clickCount,   // Click Receipts count
+    events: receipt.data.events,                   // Detailed timeline
   };
 });
 ```
