@@ -1,7 +1,7 @@
 {
   "name": "wazobiamail-nuxt",
   "version": "0.1.0",
-  "description": "Official WazobiaMail Nuxt 3 & Nuxt 4 Module - Full-stack email sending, Nitro server utilities, and auto-imported Vue composables",
+  "description": "Nuxt 3 & 4 module for WazobiaMail transactional email from Nitro via API. WazobiaMail is a Resend alternative that also supports SMTP, with domains, hosted inboxes, and deliverability checks.",
   "author": "Bowofade Oyerinde <info@bonifadetechnologies.com> (https://github.com/WazobiaMail)",
   "license": "MIT",
   "homepage": "https://wazobiamail.com",
@@ -21,7 +21,10 @@
     "email",
     "inbox",
     "nitro",
-    "composable"
+    "composable",
+    "resend-alternative",
+    "email-api",
+    "smtp"
   ],
   "type": "module",
   "main": "./dist/index.cjs",
