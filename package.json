@@ -1,7 +1,7 @@
 {
   "name": "wazobiamail-nuxt",
   "version": "0.1.0",
-  "description": "Nuxt 3 & 4 module for WazobiaMail transactional email from Nitro via API. WazobiaMail is a Resend alternative that also supports SMTP, with domains, hosted inboxes, and deliverability checks.",
+  "description": "Nuxt 3 & 4 module for WazobiaMail transactional email from Nitro via API. Start free with 3,000 emails/month. A Resend alternative that also supports SMTP, with domains, hosted inboxes, and deliverability checks.",
   "author": "Bowofade Oyerinde <info@bonifadetechnologies.com> (https://github.com/WazobiaMail)",
   "license": "MIT",
   "homepage": "https://wazobiamail.com",
